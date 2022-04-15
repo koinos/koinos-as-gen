@@ -1,6 +1,6 @@
-import { System, Protobuf, authority } from 'koinos-as-sdk';
+import { System, Protobuf, authorize_arguments, authorize_result } from "koinos-sdk-as";
 import { ##_CONTRACT_NAME_## as ContractClass } from './##_CONTRACT_NAME_##';
-import { ##_PROTO_PACKAGE_## as ProtoNamespace } from "./proto/##_PROTO_PACKAGE_##";
+import * as ProtoNamespace from "./proto/##_PROTO_PACKAGE_##";
 
 export function main(): i32 {
   const entryPoint = System.getEntryPoint();
