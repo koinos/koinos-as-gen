@@ -49,6 +49,23 @@ try {
   if (!protoPackage) {
     throw new Error(`Could not find a package in ${protoFileName}, this is required`);
   }
+
+  // get the messages comments
+  const protoComments = new Map<string, string | undefined>();
+
+  const sourceCodeInfo = protoFileDescriptor.getSourceCodeInfo();
+  if (sourceCodeInfo) {
+    for (const locationList of sourceCodeInfo.getLocationList()) {
+      // the path to a comment is represented as:
+      // the comment type: a message comment is always 4
+      // the index of the message in the proto file, starting from 0
+      const pathToComments = locationList.getPathList();
+      if (locationList.getLeadingComments()) {
+        protoComments.set(pathToComments.join('.'), locationList.getLeadingComments());
+      }
+    }
+  }
+
   const contractClassName = capitalize(path.parse(protoFileName).base.replace(".proto", ""));
 
   // @ts-ignore
@@ -67,13 +84,13 @@ try {
   // if need to generate the autorize entry point
   if (GENERATE_AUTHORIZE_ENTRY_POINT) {
     classEntryPoints += `
-      authorize(args: authorize_arguments): authorize_result {
+      authorize(args: authority.authorize_arguments): authority.authorize_result {
         // const call = args.call;
         // const type = args.type;
 
         // YOUR CODE HERE
 
-        const res = new authorize_result();
+        const res = new authority.authorize_result();
         res.value = true;
 
         return res;
@@ -82,15 +99,18 @@ try {
 
     indexEntryPoints += `
       case 0x4a2dbd90: {
-        const args = Protobuf.decode<authorize_arguments>(rdbuf, authorize_arguments.decode);
+        const args = Protobuf.decode<authority.authorize_arguments>(rdbuf, authority.authorize_arguments.decode);
         const res = c.authorize(args);
-        retbuf = Protobuf.encode(res, authorize_result.encode);
+        retbuf = Protobuf.encode(res, authority.authorize_result.encode);
         break;
       }
       `;
   }
 
-  for (const messageDescriptor of protoFileDescriptor.getMessageTypeList()) {
+  const messageDescriptors = protoFileDescriptor.getMessageTypeList();
+
+  for (let index = 0; index < messageDescriptors.length; index++) {
+    const messageDescriptor = messageDescriptors[index];
     const messageName = messageDescriptor.getName();
 
     // only parse the messages ending with '_arguments'
@@ -98,7 +118,18 @@ try {
       const argumentsMessageDescriptor = messageDescriptor;
       const argumentsMessageName = messageName;
       const methodName = argumentsMessageName.replace('_arguments', '');
-      const resultMessageName = `${methodName}_result`;
+      let resultMessageName = `${methodName}_result`;
+
+      const commentsStr = protoComments.get(`4.${index}`);
+
+      if (commentsStr) {
+        const comments = commentsStr.split('\n');
+        comments.forEach(comment => {
+          if (comment.includes('@result')) {
+            resultMessageName = comment.replace('@result', '').trim();
+          }
+        });
+      }
 
       // get the '_result' message
       // @ts-ignore: protoFileDescriptor cannot be undefined here

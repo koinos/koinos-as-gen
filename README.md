@@ -14,7 +14,7 @@ yarn add --dev koinos-as-gen
 The plugin will generate a `CONTACT.boilerplate.ts` file and an `index.ts`, for this to work the proto file needs to follow these rules:
   - the proto file must like in a `proto` folder that is at the same level as the AssemblyScript files
   - arguments messages must be name as `METHODNAME_arguments`
-  - result messages must be name as `METHODNAME_result`
+  - result messages must be name as `METHODNAME_result` (you can also provide a custom result by using the `@result` decorator. The custom result MUST be within the same proto file)
 
 ## Usage
 
